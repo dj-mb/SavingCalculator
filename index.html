@@ -108,9 +108,9 @@
               <div class="kpi-sub">Roth IRA + 529 + Brokerage</div>
             </div>
             <div class="kpi">
-              <div class="kpi-label">Net take-home</div>
+              <div class="kpi-label">Budget for Expenses</div>
               <div class="kpi-value" id="kpi-net">$0</div>
-              <div class="kpi-sub">After taxes &amp; all savings</div>
+              <div class="kpi-sub">Take-home left after all savings</div>
             </div>
           </div>
         </div>
@@ -279,8 +279,9 @@
       for (const b of BUCKETS) {
         const monthly = bucketMonthly(b);
         const years = bucketYears(b);
+        const isKid = b.horizon === "kid1" || b.horizon === "kid2";
         const balArr = [], conArr = [], grwArr = [];
-        let bal = 0, contributed = 0;
+        let bal = 0, contributed = 0, peakBal = 0;
         for (let y = 0; y <= retireYears; y++) {
           const months = 12;
           if (y > 0) {
@@ -289,8 +290,12 @@
               if (stillContributing) {
                 bal = bal * (1 + r) + monthly;
                 contributed += monthly;
+                if (bal > peakBal) peakBal = bal;
+              } else if (isKid) {
+                bal = 0; // 529 withdrawn for college
               } else {
                 bal = bal * (1 + r); // keep compounding, no new contributions
+                if (bal > peakBal) peakBal = bal;
               }
             }
           }
@@ -298,10 +303,11 @@
           conArr.push(contributed);
           grwArr.push(bal - contributed);
         }
-        series[b.key] = { balance: balArr, contrib: conArr, growth: grwArr, monthly, years };
+        const reportFinal = isKid ? peakBal : bal;
+        series[b.key] = { balance: balArr, contrib: conArr, growth: grwArr, monthly, years, reportFinal, isKid };
         totals.monthly += monthly;
         totals.contrib += contributed;
-        totals.final += bal;
+        totals.final += reportFinal;
       }
       totals.growth = totals.final - totals.contrib;
 
@@ -366,7 +372,7 @@
 
     function renderSalaryChart(breakdown) {
       const ctx = document.getElementById("chart-salary");
-      const labels = ["Net take-home", "Federal tax", "State tax", "FICA", "401(k) pre-tax", "HSA pre-tax", "Post-tax savings"];
+      const labels = ["Budget for Expenses", "Federal tax", "State tax", "FICA", "401(k) pre-tax", "HSA pre-tax", "Post-tax savings"];
       const values = [
         breakdown.net,
         breakdown.fed,
@@ -377,10 +383,32 @@
         breakdown.postTaxSavings,
       ];
       const colors = ["#16a34a", "#dc2626", "#f97316", "#f59e0b", "#2563eb", "#0ea5e9", "#7c3aed"];
+      const takeHome = breakdown.gross - breakdown.preTax - breakdown.tax;
+
+      const centerLabelPlugin = {
+        id: "centerLabel",
+        afterDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+          const cx = (chartArea.left + chartArea.right) / 2;
+          const cy = (chartArea.top + chartArea.bottom) / 2;
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#64748b";
+          ctx.font = "600 11px system-ui, sans-serif";
+          ctx.fillText("Take-home pay", cx, cy - 10);
+          ctx.fillStyle = "#1f2937";
+          ctx.font = "700 16px system-ui, sans-serif";
+          ctx.fillText(usd0.format(chart.$takeHome ?? 0) + "/mo", cx, cy + 10);
+          ctx.restore();
+        },
+      };
 
       if (charts.salary) {
         charts.salary.data.labels = labels;
         charts.salary.data.datasets[0].data = values;
+        charts.salary.$takeHome = takeHome;
         charts.salary.update();
         return;
       }
@@ -393,6 +421,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          cutout: "62%",
           plugins: {
             legend: { position: "right", labels: { color: "#1f2937", font: { size: 11 } } },
             tooltip: {
@@ -406,7 +435,9 @@
             },
           },
         },
+        plugins: [centerLabelPlugin],
       });
+      charts.salary.$takeHome = takeHome;
     }
 
     function renderProjectionChart(proj) {
@@ -506,12 +537,13 @@
       tbody.innerHTML = "";
       for (const b of BUCKETS) {
         const s = proj.series[b.key];
-        const finalBal = s.balance[s.balance.length - 1];
+        const finalBal = s.reportFinal;
         const contributed = s.contrib[s.contrib.length - 1];
         const growth = finalBal - contributed;
+        const nameSuffix = s.isKid ? ' <span style="color:var(--muted);font-size:0.78rem;">(at college)</span>' : '';
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${b.color};margin-right:8px;"></span>${b.name}</td>
+          <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${b.color};margin-right:8px;"></span>${b.name}${nameSuffix}</td>
           <td>${usd0.format(s.monthly)}</td>
           <td>${s.years}</td>
           <td>${usd0.format(contributed)}</td>
