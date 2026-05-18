@@ -273,35 +273,6 @@ button:hover { filter: brightness(0.96); }
   color: var(--muted);
 }
 
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
-}
-.video-card {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-}
-.video-card h4 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-  color: var(--text);
-}
-.video-card a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-.video-card a:hover { text-decoration: underline; }
-.video-card p {
-  margin: 6px 0 0;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
 .toggle-group {
   display: inline-flex;
   background: var(--panel-2);
