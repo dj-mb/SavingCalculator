@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savings Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-2: #273449;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #a78bfa;
+      --good: #4ade80;
+      --warn: #fbbf24;
+      --bad: #f87171;
+      --plan-a: #4ade80;
+      --plan-b: #38bdf8;
+      --plan-c: #a78bfa;
+      --plan-d: #fb923c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 32px 24px 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    section h2 {
+      margin: 0 0 16px;
+      font-size: 1.25rem;
+      color: var(--accent);
+    }
+
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-group label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .input-group input[type="number"] {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 1rem;
+      transition: border-color 0.15s;
+    }
+    .input-group input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .slider-row {
+      background: var(--panel-2);
+      padding: 12px 14px;
+      border-radius: 8px;
+    }
+    .slider-row .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .slider-row .label-row .name {
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .slider-row .label-row .value {
+      font-size: 0.9rem;
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 1200px) {
+      .plans-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 700px) {
+      .plans-grid { grid-template-columns: 1fr; }
+    }
+
+    .plan-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .plan-card.plan-a { border-top: 3px solid var(--plan-a); }
+    .plan-card.plan-b { border-top: 3px solid var(--plan-b); }
+    .plan-card.plan-c { border-top: 3px solid var(--plan-c); }
+    .plan-card.plan-d { border-top: 3px solid var(--plan-d); }
+
+    .plan-header h3 {
+      margin: 0 0 4px;
+      font-size: 1.05rem;
+    }
+    .plan-header .subtitle {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .plan-totals {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .plan-totals .big {
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .allocations {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+    .alloc-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .alloc-row .alloc-name { color: var(--muted); }
+    .alloc-row .alloc-pct {
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      min-width: 40px;
+      text-align: right;
+    }
+    .alloc-row .alloc-dollar {
+      font-variant-numeric: tabular-nums;
+      color: var(--good);
+      min-width: 70px;
+      text-align: right;
+    }
+    .alloc-row.with-slider {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+    .alloc-row.with-slider .slider-line {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 180px;
+    }
+
+    .summary-table {
+      width: 100%;
+      font-size: 0.8rem;
+      border-collapse: collapse;
+    }
+    .summary-table th, .summary-table td {
+      padding: 6px 4px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-table th { color: var(--muted); font-weight: 500; }
+    .summary-table th:first-child, .summary-table td:first-child {
+      text-align: left;
+    }
+    .summary-table tr.total td {
+      border-bottom: none;
+      padding-top: 8px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .warning-badge {
+      background: var(--warn);
+      color: #1f1300;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    button {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover {
+      background: var(--border);
+      border-color: var(--accent);
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .tip {
+      background: var(--panel-2);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .tip h4 {
+      margin: 0 0 6px;
+      font-size: 0.95rem;
+      color: var(--accent);
+    }
+    .tip p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .tip ol {
+      margin: 6px 0 0;
+      padding-left: 20px;
+      font-size: 0.83rem;
+      color: var(--muted);
+    }
+    .tip ol li { margin-bottom: 3px; }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Savings Calculator</h1>
+    <p>Distribute your salary across savings buckets and project growth to your retirement age.</p>
+  </header>
+
+  <main>
+    <section id="inputs-panel">
+      <h2>Your Inputs</h2>
+      <div class="inputs-grid">
+        <div class="input-group">
+          <label for="in-salary">Monthly Salary ($)</label>
+          <input type="number" id="in-salary" min="0" step="100" value="8000" />
+        </div>
+        <div class="input-group">
+          <label for="in-dependents"># Dependents</label>
+          <input type="number" id="in-dependents" min="0" step="1" value="2" />
+        </div>
+        <div class="input-group">
+          <label for="in-kids"># Kids (Tuition)</label>
+          <input type="number" id="in-kids" min="0" max="6" step="1" value="2" />
+        </div>
+        <div class="input-group">
+          <label for="in-age">Current Age</label>
+          <input type="number" id="in-age" min="18" max="80" step="1" value="32" />
+        </div>
+        <div class="input-group">
+          <label for="in-retire">FIRE / Retirement Age</label>
+          <input type="number" id="in-retire" min="25" max="90" step="1" value="60" />
+        </div>
+      </div>
+    </section>
+
+    <section id="returns-panel">
+      <h2>Expected Annual Returns (per bucket)</h2>
+      <div class="sliders-grid" id="returns-sliders"></div>
+    </section>
+
+    <section id="plans-section">
+      <h2>Savings Plans</h2>
+      <div class="plans-grid" id="plans-grid"></div>
+    </section>
+
+    <section id="tips-section">
+      <h2>Personal Finance Best Practices</h2>
+      <div class="tips-grid">
+        <div class="tip">
+          <h4>1. Order of Savings Priority</h4>
+          <ol>
+            <li>Capture full employer 401(k) match (free 50&ndash;100% return)</li>
+            <li>Pay off high-interest debt (&gt;7% APR)</li>
+            <li>Build 3&ndash;6 months of expenses as an emergency fund (HYSA)</li>
+            <li>Max HSA on an HDHP (triple tax advantage)</li>
+            <li>Max Roth or Traditional IRA ($7K/yr; $8K if 50+)</li>
+            <li>Return to 401(k) and max it ($23,500/yr in 2025)</li>
+            <li>Fund 529 plans for kids' tuition</li>
+            <li>Taxable brokerage for anything beyond</li>
+          </ol>
+        </div>
+        <div class="tip">
+          <h4>2. 50/30/20 Rule</h4>
+          <p>Spend 50% on needs, 30% on wants, save 20%. Aggressive savers target 30&ndash;50% saved.</p>
+        </div>
+        <div class="tip">
+          <h4>3. Pay Yourself First</h4>
+          <p>Automate transfers to investment accounts on payday so the money never sits in checking.</p>
+        </div>
+        <div class="tip">
+          <h4>4. FIRE Math (4% Rule)</h4>
+          <p>Target portfolio = 25&times; annual expenses. A 4% safe withdrawal rate historically sustains 30+ years.</p>
+        </div>
+        <div class="tip">
+          <h4>5. HSA as Stealth Retirement</h4>
+          <p>After 65, non-medical withdrawals are taxed like a Traditional IRA. Qualified medical withdrawals stay tax-free forever &mdash; save receipts and let it grow.</p>
+        </div>
+        <div class="tip">
+          <h4>6. 529 Plans</h4>
+          <p>Age-based portfolios shift from stocks to bonds as your child nears college. Many states give a tax deduction for contributions.</p>
+        </div>
+        <div class="tip">
+          <h4>7. Asset Allocation Rule of Thumb</h4>
+          <p>% in stocks &asymp; 110 &minus; your age. Younger investors ride out volatility; near retirement, shift to bonds for stability.</p>
+        </div>
+        <div class="tip">
+          <h4>8. Diversify Cheaply</h4>
+          <p>Low-cost broad-market index funds (total US, total international, total bond) typically beat actively managed funds after fees over long horizons.</p>
+        </div>
+        <div class="tip">
+          <h4>9. Dollar-Cost Averaging</h4>
+          <p>Invest a fixed amount on a regular schedule regardless of market level. Removes timing decisions and smooths entry price.</p>
+        </div>
+        <div class="tip">
+          <h4>10. Avoid Lifestyle Inflation</h4>
+          <p>When income rises, route the raise into savings before lifestyle adjusts. The largest lever most people have.</p>
+        </div>
+        <div class="tip">
+          <h4>11. Roth vs Traditional</h4>
+          <p>Roth if you expect a higher tax bracket in retirement (common when young). Traditional if you expect lower. Many people split.</p>
+        </div>
+        <div class="tip">
+          <h4>12. Review Annually</h4>
+          <p>Rebalance allocations, increase contributions with raises, revisit beneficiaries and insurance coverage.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Projections use monthly compounding: <code>FV = PMT &times; ((1+r)<sup>n</sup> &minus; 1) / r</code>, where <code>r = annual% / 12</code>, <code>n = years &times; 12</code>.</p>
+    <p>This tool is for educational purposes only and is not financial advice.</p>
+  </footer>
+
+  <script type="module">
+    // ---------- State ----------
+    const PRESETS = {
+      A: { name: "Conservative", color: "#4ade80", retirement: 10, hsa: 2, tuitionTotal: 3 },
+      B: { name: "Moderate",     color: "#38bdf8", retirement: 15, hsa: 3, tuitionTotal: 7 },
+      C: { name: "Aggressive",   color: "#a78bfa", retirement: 25, hsa: 5, tuitionTotal: 10 },
+    };
+
+    const BUCKET_COLORS = {
+      retirement: "#38bdf8",
+      hsa:        "#a78bfa",
+      kid_0:      "#4ade80",
+      kid_1:      "#fb923c",
+      kid_2:      "#f472b6",
+      kid_3:      "#facc15",
+      kid_4:      "#22d3ee",
+      kid_5:      "#f87171",
+    };
+
+    const state = {
+      salary: 8000,
+      dependents: 2,
+      kids: 2,
+      age: 32,
+      retire: 60,
+      returnRates: { retirement: 8, hsa: 7, kid_0: 6, kid_1: 6 },
+      customAllocs: { retirement: 15, hsa: 3, kid_0: 3.5, kid_1: 3.5 },
+    };
+
+    // ---------- Pure calc helpers ----------
+    function getBuckets(kids) {
+      const list = ["retirement", "hsa"];
+      for (let i = 0; i < kids; i++) list.push(`kid_${i}`);
+      return list;
+    }
+
+    function bucketLabel(key) {
+      if (key === "retirement") return "Retirement";
+      if (key === "hsa") return "HSA";
+      const idx = Number(key.split("_")[1]);
+      return `Kid ${idx + 1} Tuition`;
+    }
+
+    function fvMonthly(pmt, annualPct, years) {
+      const r = (annualPct / 100) / 12;
+      const n = years * 12;
+      if (r === 0) return pmt * n;
+      return pmt * (Math.pow(1 + r, n) - 1) / r;
+    }
+
+    function getPresetAllocations(planKey, kids) {
+      if (planKey === "D") {
+        const allocs = {};
+        for (const b of getBuckets(kids)) {
+          allocs[b] = state.customAllocs[b] ?? 0;
+        }
+        return allocs;
+      }
+      const p = PRESETS[planKey];
+      const allocs = { retirement: p.retirement, hsa: p.hsa };
+      if (kids === 0) {
+        // redistribute tuition share into retirement
+        allocs.retirement += p.tuitionTotal;
+      } else {
+        const per = p.tuitionTotal / kids;
+        for (let i = 0; i < kids; i++) allocs[`kid_${i}`] = per;
+      }
+      return allocs;
+    }
+
+    function computePlan(planKey, st) {
+      const buckets = getBuckets(st.kids);
+      const allocs = getPresetAllocations(planKey, st.kids);
+      const years = Math.max(0, st.retire - st.age);
+      const result = { buckets: {}, totalMonthly: 0, totalFinal: 0, totalPct: 0 };
+
+      for (const b of buckets) {
+        const pct = allocs[b] ?? 0;
+        const monthly = st.salary * (pct / 100);
+        const rate = st.returnRates[b] ?? 8;
+        const series = [];
+        for (let y = 0; y <= years; y++) {
+          series.push(fvMonthly(monthly, rate, y));
+        }
+        const finalBalance = series[series.length - 1];
+        result.buckets[b] = { pct, monthly, rate, series, finalBalance };
+        result.totalMonthly += monthly;
+        result.totalFinal += finalBalance;
+        result.totalPct += pct;
+      }
+      return result;
+    }
+
+    // ---------- Formatting ----------
+    const usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    const usd2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+    // ---------- Rendering ----------
+    const charts = {}; // planKey -> Chart instance
+
+    function ensureReturnRatesForBuckets(buckets) {
+      for (const b of buckets) {
+        if (state.returnRates[b] === undefined) {
+          state.returnRates[b] = b.startsWith("kid_") ? 6 : 8;
+        }
+      }
+      // do NOT delete extras; keep prior values when kids reduce then grow
+    }
+
+    function ensureCustomAllocsForBuckets(buckets) {
+      for (const b of buckets) {
+        if (state.customAllocs[b] === undefined) {
+          // default Plan D to Moderate distribution
+          const mod = getPresetAllocations("B", state.kids);
+          state.customAllocs[b] = mod[b] ?? 0;
+        }
+      }
+    }
+
+    function renderReturnSliders() {
+      const wrap = document.getElementById("returns-sliders");
+      const buckets = getBuckets(state.kids);
+      wrap.innerHTML = "";
+      for (const b of buckets) {
+        const row = document.createElement("div");
+        row.className = "slider-row";
+        const rate = state.returnRates[b] ?? 8;
+        row.innerHTML = `
+          <div class="label-row">
+            <span class="name">${bucketLabel(b)}</span>
+            <span class="value" data-rate-label="${b}">${rate.toFixed(1)}%</span>
+          </div>
+          <input type="range" min="0" max="15" step="0.1" value="${rate}" data-rate-slider="${b}" />
+        `;
+        wrap.appendChild(row);
+      }
+    }
+
+    function renderPlans() {
+      const grid = document.getElementById("plans-grid");
+      grid.innerHTML = "";
+      const buckets = getBuckets(state.kids);
+
+      for (const planKey of ["A", "B", "C", "D"]) {
+        const isCustom = planKey === "D";
+        const meta = isCustom
+          ? { name: "Custom", color: "#fb923c" }
+          : PRESETS[planKey];
+        const computed = computePlan(planKey, state);
+
+        const card = document.createElement("div");
+        card.className = `plan-card plan-${planKey.toLowerCase()}`;
+
+        // Header
+        const headerHTML = `
+          <div class="plan-header">
+            <h3>Plan ${planKey} &mdash; ${meta.name}</h3>
+            <div class="subtitle">${
+              isCustom
+                ? `Customize allocations below`
+                : `Preset distribution`
+            }</div>
+          </div>
+          <div class="plan-totals">
+            <span>Monthly: <span class="big">${usd0.format(computed.totalMonthly)}</span></span>
+            <span>Rate: <span class="big">${computed.totalPct.toFixed(1)}%</span></span>
+          </div>
+        `;
+
+        // Allocations
+        let allocHTML = `<div class="allocations">`;
+        for (const b of buckets) {
+          const data = computed.buckets[b];
+          if (isCustom) {
+            allocHTML += `
+              <div class="alloc-row with-slider">
+                <div class="slider-line">
+                  <span class="alloc-name">${bucketLabel(b)}</span>
+                  <span class="alloc-pct">${data.pct.toFixed(1)}%</span>
+                  <span class="alloc-dollar">${usd0.format(data.monthly)}/mo</span>
+                </div>
+                <input type="range" min="0" max="100" step="0.5" value="${data.pct}" data-custom-slider="${b}" />
+              </div>
+            `;
+          } else {
+            allocHTML += `
+              <div class="alloc-row">
+                <span class="alloc-name">${bucketLabel(b)}</span>
+                <span class="alloc-pct">${data.pct.toFixed(1)}%</span>
+                <span class="alloc-dollar">${usd0.format(data.monthly)}/mo</span>
+              </div>
+            `;
+          }
+        }
+        allocHTML += `</div>`;
+
+        // Custom warning + reset
+        let extrasHTML = "";
+        if (isCustom) {
+          const overAlloc = computed.totalPct > 100;
+          extrasHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              ${overAlloc ? `<span class="warning-badge">Total &gt; 100%</span>` : `<span style="font-size:0.8rem;color:var(--muted);">Total: ${computed.totalPct.toFixed(1)}%</span>`}
+              <button data-reset-custom>Reset to Moderate</button>
+            </div>
+          `;
+        }
+
+        // Chart canvas
+        const chartHTML = `<div class="chart-wrap"><canvas data-chart="${planKey}"></canvas></div>`;
+
+        // Summary table
+        let tableHTML = `
+          <table class="summary-table">
+            <thead>
+              <tr><th>Bucket</th><th>Rate</th><th>Final @ Age ${state.retire}</th></tr>
+            </thead>
+            <tbody>
+        `;
+        for (const b of buckets) {
+          const data = computed.buckets[b];
+          tableHTML += `
+            <tr>
+              <td>${bucketLabel(b)}</td>
+              <td>${data.rate.toFixed(1)}%</td>
+              <td>${usd0.format(data.finalBalance)}</td>
+            </tr>
+          `;
+        }
+        tableHTML += `
+              <tr class="total">
+                <td>Total</td>
+                <td></td>
+                <td>${usd0.format(computed.totalFinal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+        card.innerHTML = headerHTML + allocHTML + extrasHTML + chartHTML + tableHTML;
+        grid.appendChild(card);
+
+        // Build/update chart
+        const canvas = card.querySelector(`canvas[data-chart="${planKey}"]`);
+        renderChart(planKey, canvas, computed);
+      }
+    }
+
+    function renderChart(planKey, canvas, computed) {
+      const years = Math.max(0, state.retire - state.age);
+      const ages = [];
+      for (let y = 0; y <= years; y++) ages.push(state.age + y);
+
+      const buckets = getBuckets(state.kids);
+      const datasets = buckets.map((b) => {
+        const color = BUCKET_COLORS[b] || "#94a3b8";
+        return {
+          label: bucketLabel(b),
+          data: computed.buckets[b].series,
+          borderColor: color,
+          backgroundColor: color + "55",
+          fill: true,
+          pointRadius: 0,
+          tension: 0.2,
+          borderWidth: 1.5,
+        };
+      });
+
+      // Destroy and recreate to handle bucket count changes simply
+      if (charts[planKey]) {
+        charts[planKey].destroy();
+      }
+      charts[planKey] = new Chart(canvas, {
+        type: "line",
+        data: { labels: ages, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: "#94a3b8", boxWidth: 10, font: { size: 10 } },
+              position: "bottom",
+            },
+            tooltip: {
+              callbacks: {
+                title: (items) => `Age ${items[0].label}`,
+                label: (ctx) => `${ctx.dataset.label}: ${usd0.format(ctx.parsed.y)}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#64748b", font: { size: 10 } },
+              grid: { color: "#1e293b" },
+              title: { display: true, text: "Age", color: "#94a3b8", font: { size: 10 } },
+            },
+            y: {
+              stacked: true,
+              ticks: {
+                color: "#64748b",
+                font: { size: 10 },
+                callback: (v) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`),
+              },
+              grid: { color: "#1e293b" },
+            },
+          },
+        },
+      });
+    }
+
+    // ---------- Events ----------
+    let renderTimeout = null;
+    function scheduleRender() {
+      if (renderTimeout) return;
+      renderTimeout = setTimeout(() => {
+        renderTimeout = null;
+        renderAll();
+      }, 50);
+    }
+
+    function renderAll() {
+      const buckets = getBuckets(state.kids);
+      ensureReturnRatesForBuckets(buckets);
+      ensureCustomAllocsForBuckets(buckets);
+      renderReturnSliders();
+      renderPlans();
+    }
+
+    function readInputs() {
+      state.salary = Math.max(0, Number(document.getElementById("in-salary").value) || 0);
+      state.dependents = Math.max(0, Number(document.getElementById("in-dependents").value) || 0);
+      state.kids = Math.max(0, Math.min(6, Number(document.getElementById("in-kids").value) || 0));
+      state.age = Math.max(18, Number(document.getElementById("in-age").value) || 18);
+      state.retire = Math.max(state.age + 1, Number(document.getElementById("in-retire").value) || state.age + 1);
+    }
+
+    function wireEvents() {
+      // Input panel
+      ["in-salary", "in-dependents", "in-kids", "in-age", "in-retire"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", () => {
+          readInputs();
+          scheduleRender();
+        });
+      });
+
+      // Delegated listeners for dynamic sliders and Plan D
+      document.body.addEventListener("input", (e) => {
+        const t = e.target;
+        if (t.matches("[data-rate-slider]")) {
+          const b = t.dataset.rateSlider;
+          state.returnRates[b] = parseFloat(t.value);
+          // Update label inline without full rerender flicker, then schedule chart rerender
+          const lbl = document.querySelector(`[data-rate-label="${b}"]`);
+          if (lbl) lbl.textContent = `${parseFloat(t.value).toFixed(1)}%`;
+          scheduleRender();
+        } else if (t.matches("[data-custom-slider]")) {
+          const b = t.dataset.customSlider;
+          state.customAllocs[b] = parseFloat(t.value);
+          scheduleRender();
+        }
+      });
+
+      // Delegated click for Reset to Moderate
+      document.body.addEventListener("click", (e) => {
+        if (e.target.matches("[data-reset-custom]")) {
+          const mod = getPresetAllocations("B", state.kids);
+          for (const b of getBuckets(state.kids)) {
+            state.customAllocs[b] = mod[b] ?? 0;
+          }
+          scheduleRender();
+        }
+      });
+    }
+
+    // ---------- Init ----------
+    readInputs();
+    wireEvents();
+    renderAll();
+  </script>
+</body>
+</html>
